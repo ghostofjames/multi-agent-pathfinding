@@ -8,6 +8,7 @@ from world import Position
 
 class Application(tk.Frame):
     UPDATE_FREQUENCY: int = 1
+    simulation: Simulation
 
     def __init__(self, root, *args, **kwargs):
         tk.Frame.__init__(self, root, *args, **kwargs)
@@ -32,7 +33,7 @@ class Application(tk.Frame):
         self.mainloop()
 
     def initalise_simulation(self):
-        self.simulation = Simulation(speed=0.25)
+        self.simulation = Simulation(speed=1)
 
         self.canvas = Grid(self.main, self.simulation)
         self.canvas.grid(column=0, row=0, sticky='nsew')
@@ -90,17 +91,32 @@ class Side(ttk.Labelframe):
         self.buttonStop = ttk.Button(self, text='Stop', command=self.parent.stop)
         self.buttonStop.grid(column=0, row=4)
 
-        ttk.Separator(self, orient='horizontal').grid(column=0, row=5, pady=5, sticky='nsew')
+        self.speedPicker = ttk.Frame(self)
+        self.speedPicker.grid(column=0, row=5)
+
+        ttk.Label(self.speedPicker, text='Speed').grid(column=0, row=0)
+
+        def updatespeed(*_):
+            self.parent.simulation.speed = self.speedval.get()
+
+        self.speedval = tk.IntVar(value=1)
+        self.speedval.trace('w', updatespeed)
+
+        self.spinboxSpeed = ttk.Spinbox(self.speedPicker, from_=1,
+                                        to=5, textvariable=self.speedval, width=2)
+        self.spinboxSpeed.grid(column=1, row=0)
+
+        ttk.Separator(self, orient='horizontal').grid(column=0, row=6, pady=5, sticky='nsew')
 
         self.time_variable = tk.StringVar()
         self.time_variable.set(f'Time: 0')
         self.labelTime = ttk.Label(self, textvariable=self.time_variable)
-        self.labelTime.grid(column=0, row=6, sticky='ew')
+        self.labelTime.grid(column=0, row=7, sticky='ew')
 
-        ttk.Separator(self, orient='horizontal').grid(column=0, row=7, pady=5, sticky='nsew')
+        ttk.Separator(self, orient='horizontal').grid(column=0, row=8, pady=5, sticky='nsew')
 
         self.task_list = TaskList(self, columns=('start', 'end'), selectmode='none')
-        self.task_list.grid(column=0, row=10, sticky='s')
+        self.task_list.grid(column=0, row=9, sticky='s')
         self.rowconfigure(10, weight=1)
 
 

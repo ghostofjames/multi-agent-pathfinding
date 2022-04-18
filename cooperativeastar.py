@@ -1,10 +1,11 @@
 from queue import PriorityQueue
+from typing import NamedTuple
 
 from world import World, Position
 from agent import Agent
 import heuristics
 
-Node = tuple[Position, int]  # a Position and an integer Time
+Node = tuple[Position, int]
 Path = list[tuple[int, Position]]
 
 
@@ -49,15 +50,11 @@ class CooperativeAStar():
         open.put((0, (start, t)))
 
         start_node: Node = (start, t)
-        nodes_expanded: int = 0
 
         while not open.empty():
             current_node: Node = open.get()[1]
 
-            nodes_expanded += 1
-
             if current_node[0] == goal:
-                print(f'Nodes Expanded: {nodes_expanded}')
                 return self.construct_path(closed, current_node, start_node)
 
             n_time = current_node[1] + 1

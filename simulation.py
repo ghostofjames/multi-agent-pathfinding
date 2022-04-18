@@ -32,11 +32,11 @@ class Simulation():
     paused: bool
     complete: bool
 
-    def __init__(self, world='warehouse.json', speed=1):
+    def __init__(self, world='warehouse copy.json', tasks='task-list.json', speed=1):
         self.speed = speed
         self.world = World(world)
 
-        self.time = -1
+        self.time = 0
 
         # self.agents = [Agent(0, Position(1, 1)),
         #                Agent(1, Position(0, 0)),
@@ -58,7 +58,7 @@ class Simulation():
         #                Agent(7, Position(10, 8))]
 
         self.taskmanager = TaskManager()
-        self.taskmanager.load('task-list.json')
+        self.taskmanager.load(tasks)
 
         # self.taskmanager.assign_tasks(self.agents)
 
@@ -73,25 +73,23 @@ class Simulation():
 
     @timing
     def step(self):
-        self.time += 1
-
         for agent in self.agents:
             if agent.task == None:
                 agent.task = self.taskmanager.assign_task(agent)
-                # print(f'{agent} has been assigned {agent.task}')
+                print(f'{agent} has been assigned {agent.task}')
 
             elif agent.goal_reached():
-                # print(f'{agent} has reached goal {agent.goal}')
+                print(f'{agent} has reached goal {agent.goal}')
                 if agent.task.picked_up == False:
                     agent.task.pick_up()
-                    # print(f'Agent has picked up item and is moving to destination.')
+                    print(f'Agent has picked up item and is moving to destination.')
                 else:
                     agent.task.put_down()
-                    # print(f'Agent has delivered item and {agent.task} is complete.')
+                    print(f'Agent has delivered item and {agent.task} is complete.')
                     agent.task = None
 
             elif agent.path == [] or (len(agent.path) == 1 and agent.path[0][1] == agent.position):
-                # print(f'Finding path for {agent} to goal {agent.goal}')
+                print(f'Finding path for {agent} to goal {agent.goal}')
                 path = self.solver.calculate_path(agent, self.time)
                 agent.path = path
 
@@ -104,11 +102,13 @@ class Simulation():
             print(f"all tasks have been complete, time taken was {self.time}")
             self.complete = True
 
+        self.time += 1
+
     def run(self):
         # run simulation until all agents reach goal
         # while not all(agent.goal_reached() for agent in self.agents):
         while True:
-            time.sleep(self.speed)
+            time.sleep(1 / self.speed)
             if self.paused:
                 continue
             elif self.complete:

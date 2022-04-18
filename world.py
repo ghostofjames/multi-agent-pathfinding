@@ -2,8 +2,6 @@ from typing import Iterator, NamedTuple
 import json
 
 
-# Position = NamedTuple('Position', [('x', int), ('y', int)])
-
 class Position(NamedTuple):
     x: int
     y: int
@@ -15,11 +13,11 @@ class Position(NamedTuple):
 class World():
     size: tuple[int, int]
     obstacles: list[Position]
-    movement = [(1,  0),
-                (0,  1),
-                (-1, 0),
-                (0, -1),
-                (0,  0)]
+    movements = [(1,  0),
+                 (0,  1),
+                 (-1, 0),
+                 (0, -1),
+                 (0,  0)]
 
     def __init__(self, file='warehouse-empty.json') -> None:
         with open(file) as f:
@@ -35,13 +33,8 @@ class World():
 
     def neighbours(self, pos: Position) -> Iterator[Position]:
         pos = Position(*pos)
-        # neighbours = (Position(pos.x + 1, pos.y),      # up
-        #               Position(pos.x,     pos.y - 1),  # right
-        #               Position(pos.x - 1, pos.y),      # down
-        #               Position(pos.x,     pos.y + 1),  # left
-        #               Position(pos.x,     pos.y))      # wait
 
-        neighbours = (Position(pos.x + m[0], pos.y + m[1]) for m in self.movement)
+        neighbours = (Position(pos.x + move[0], pos.y + move[1]) for move in self.movements)
 
         return filter(self.passable, filter(self.in_bounds, neighbours))
 

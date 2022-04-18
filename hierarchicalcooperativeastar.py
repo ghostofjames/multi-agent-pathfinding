@@ -17,18 +17,15 @@ class HierarchicalCooperativeAstar(CooperativeAStar):
         open.put((0, (start, t)))
 
         start_node: Node = (start, t)
-        nodes_expanded: int = 0
+        current_node = start_node
 
         heuristic = self.ReverseResumableAstar(start, goal, self.world)
 
         while not open.empty():
             current_node: Node = open.get()[1]
 
-            nodes_expanded += 1
-
             if current_node[0] == goal:
-                print(f'Nodes Expanded: {nodes_expanded}')
-                return self.construct_path(closed, current_node, start_node)
+                break
 
             n_time = current_node[1] + 1
             for neighbour in self.world.neighbours(current_node[0]):
@@ -43,7 +40,7 @@ class HierarchicalCooperativeAstar(CooperativeAStar):
                     open.put((f, (neighbour, n_time)))
                     closed[(neighbour, n_time)] = (current_node, g)
 
-        raise Exception('Path not found')
+        return self.construct_path(closed, current_node, start_node)
 
     class ReverseResumableAstar():
         def __init__(self, initial: Position, goal: Position, w: World) -> None:
@@ -70,7 +67,6 @@ class HierarchicalCooperativeAstar(CooperativeAStar):
                     g = p[1] + 1
                     h = heuristics.manhattan_distance(neighbour, self.initial)
                     if neighbour not in self.closed or g < self.closed[neighbour]:
-                        # self.closed[neighbour] = g
                         self.open.put((h, (neighbour, g)))
 
             return False
