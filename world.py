@@ -19,11 +19,17 @@ class World():
                  (0, -1),
                  (0,  0)]
 
-    def __init__(self, file='warehouse-empty.json') -> None:
+    def __init__(self, size, obstacles) -> None:
+        self.size = size
+        self.obstacles = obstacles
+
+    @classmethod
+    def from_file(cls, file='warehouse-empty.json'):
         with open(file) as f:
             d = json.load(f)
-            self.size = tuple(d['size'])
-            self.obstacles = [Position(*pos) for pos in d['obstacles']]
+            size = tuple(d['size'])
+            obstacles = [Position(*pos) for pos in d['obstacles']]
+            return cls(size, obstacles)
 
     def in_bounds(self, pos: Position) -> bool:
         return 0 <= pos.x <= self.size[0] and 0 <= pos.y <= self.size[1]

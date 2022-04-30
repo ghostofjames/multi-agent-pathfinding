@@ -106,18 +106,30 @@ class Side(ttk.Labelframe):
                                         to=5, textvariable=self.speedval, width=2)
         self.spinboxSpeed.grid(column=1, row=0)
 
-        ttk.Separator(self, orient='horizontal').grid(column=0, row=6, pady=5, sticky='nsew')
+        ttk.Separator(self, orient='horizontal').grid(column=0, row=15, pady=5, sticky='nsew')
+
+        ttk.Label(self, text='Algorithms').grid(column=0, row=16)
+
+        self.selected = tk.StringVar()
+        r1 = ttk.Radiobutton(self, text='CA*', value='CA*', variable=self.selected)
+        r1.grid(column=0, row=17, sticky='w')
+        r2 = ttk.Radiobutton(self, text='HCA*', value='HCA*', variable=self.selected)
+        r2.grid(column=0, row=18, sticky='w')
+        r3 = ttk.Radiobutton(self, text='WHCA*', value='WHCA*', variable=self.selected)
+        r3.grid(column=0, row=19, sticky='w')
+
+        ttk.Separator(self, orient='horizontal').grid(column=0, row=30, pady=5, sticky='nsew')
 
         self.time_variable = tk.StringVar()
         self.time_variable.set(f'Time: 0')
         self.labelTime = ttk.Label(self, textvariable=self.time_variable)
-        self.labelTime.grid(column=0, row=7, sticky='ew')
+        self.labelTime.grid(column=0, row=32, sticky='ew')
 
-        ttk.Separator(self, orient='horizontal').grid(column=0, row=8, pady=5, sticky='nsew')
+        ttk.Separator(self, orient='horizontal').grid(column=0, row=40, pady=5, sticky='nsew')
 
         self.task_list = TaskList(self, columns=('start', 'end'), selectmode='none')
-        self.task_list.grid(column=0, row=9, sticky='s')
-        self.rowconfigure(10, weight=1)
+        self.task_list.grid(column=0, row=41, sticky='s')
+        self.rowconfigure(41, weight=1)
 
 
 class TaskList(ttk.Treeview):

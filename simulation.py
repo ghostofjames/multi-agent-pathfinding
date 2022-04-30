@@ -34,7 +34,7 @@ class Simulation():
 
     def __init__(self, world='warehouse copy.json', tasks='task-list.json', speed=1):
         self.speed = speed
-        self.world = World(world)
+        self.world = World.from_file(world)
 
         self.time = 0
 
