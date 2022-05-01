@@ -13,13 +13,9 @@ class Position(NamedTuple):
 class World():
     size: tuple[int, int]
     obstacles: list[Position]
-    movements = [(1,  0),
-                 (0,  1),
-                 (-1, 0),
-                 (0, -1),
-                 (0,  0)]
+    movements = [(1,  0), (0,  1), (-1, 0), (0, -1), (0,  0)]
 
-    def __init__(self, size, obstacles) -> None:
+    def __init__(self, size: tuple[int, int], obstacles: list[Position]) -> None:
         self.size = size
         self.obstacles = obstacles
 
@@ -39,9 +35,7 @@ class World():
 
     def neighbours(self, pos: Position) -> Iterator[Position]:
         pos = Position(*pos)
-
         neighbours = (Position(pos.x + move[0], pos.y + move[1]) for move in self.movements)
-
         return filter(self.passable, filter(self.in_bounds, neighbours))
 
 

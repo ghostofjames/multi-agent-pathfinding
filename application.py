@@ -33,7 +33,7 @@ class Application(tk.Frame):
         self.mainloop()
 
     def initalise_simulation(self):
-        self.simulation = Simulation(speed=1)
+        self.simulation = Simulation(speed=2)
 
         self.canvas = Grid(self.main, self.simulation)
         self.canvas.grid(column=0, row=0, sticky='nsew')

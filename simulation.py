@@ -1,12 +1,14 @@
-from itertools import combinations
+import json
 import time
+from itertools import combinations
+from pprint import pprint
 
 from agent import Agent
-from hierarchicalcooperativeastar import HierarchicalCooperativeAstar
-from world import Position, World
-from taskmanager import TaskManager
 from cooperativeastar import CooperativeAStar, heuristics
-
+from hierarchicalcooperativeastar import HierarchicalCooperativeAstar
+from task import Task
+from taskmanager import TaskManager
+from world import Position, World
 
 from functools import wraps
 
@@ -34,19 +36,40 @@ class Simulation():
 
     def __init__(self, world='warehouse copy.json', tasks='task-list.json', speed=1):
         self.speed = speed
-        self.world = World.from_file(world)
-
         self.time = 0
+        self.paused = True
+        self.complete = False
+
+        self.taskmanager = TaskManager()
+
+        with open('config.json') as f:
+            data = json.load(f)
+
+            size = data['size']
+            obstacles = [Position(*obstacle) for obstacle in data['obstacles']]
+            self.world = World(size, obstacles)
+
+            self.agents = [Agent(agent['id'], Position(*agent['position']))
+                           for agent in data['agents']]
+            # self.solver = CooperativeAStar(self.world, heuristic=heuristics.heuristic_fudge)
+            self.solver = HierarchicalCooperativeAstar(self.world)
+
+            for agent in self.agents:
+                self.solver.add_agent(agent)
+
+            tasks = [Task(task['id'], Position(*task['start']), Position(*task['end']))
+                     for task in data['tasks']]
+            self.taskmanager.add(tasks)
 
         # self.agents = [Agent(0, Position(1, 1)),
         #                Agent(1, Position(0, 0)),
         #                Agent(2, Position(0, 2)),
         #                Agent(3, Position(0, 1))]
 
-        self.agents = [Agent(0, Position(0,  0)),
-                       Agent(1, Position(10, 0)),
-                       Agent(2, Position(0,  10)),
-                       Agent(3, Position(10, 10))]
+        # self.agents = [Agent(0, Position(0,  0)),
+        #                Agent(1, Position(10, 0)),
+        #                Agent(2, Position(0,  10)),
+        #                Agent(3, Position(10, 10))]
 
         # self.agents = [Agent(0, Position(0,  0)),
         #                Agent(1, Position(10, 0)),
@@ -56,20 +79,6 @@ class Simulation():
         #                Agent(5, Position(10,  2)),
         #                Agent(6, Position(0,   8)),
         #                Agent(7, Position(10, 8))]
-
-        self.taskmanager = TaskManager()
-        self.taskmanager.load(tasks)
-
-        # self.taskmanager.assign_tasks(self.agents)
-
-        # self.solver = CooperativeAStar(self.world, heuristic=heuristics.heuristic_fudge)
-        self.solver = HierarchicalCooperativeAstar(self.world)
-
-        for agent in self.agents:
-            self.solver.add_agent(agent)
-
-        self.paused = True
-        self.complete = False
 
     @timing
     def step(self):
@@ -98,7 +107,7 @@ class Simulation():
 
         self.collision_test()
 
-        if self.taskmanager.all_complete():
+        if self.taskmanager.all_complete:
             print(f"all tasks have been complete, time taken was {self.time}")
             self.complete = True
 

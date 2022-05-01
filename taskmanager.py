@@ -1,4 +1,4 @@
-import json
+from typing import Iterator
 
 from agent import Agent
 from task import Task
@@ -10,30 +10,31 @@ class TaskManager():
 
     def __init__(self) -> None:
         self.tasks = []
-        self.queue = []
 
-    def add(self, task):
-        if task not in self.tasks:
-            self.tasks.append(task)
-            self.queue.append(task)
+    @property
+    def assigned(self) -> Iterator:
+        return filter(lambda task: task.assigned, self.tasks)
 
-    def load(self, file='task-list.json') -> None:
-        with open(file) as f:
-            for task in json.load(f):
-                self.add(Task(id=task['id'],
-                              start=Position(*task['start']),
-                              end=Position(*task['end'])))
+    @property
+    def unassigned(self) -> Iterator:
+        return filter(lambda task: not task.assigned, self.tasks)
+
+    @property
+    def all_complete(self) -> bool:
+        return all(task.complete for task in self.tasks)
+
+    def add(self, tasks: list[Task]):
+        for task in tasks:
+            if task not in self.tasks:
+                self.tasks.append(task)
 
     def assign_task(self, agent: Agent) -> Task | None:
         try:
             task = self.get_closest_task(agent.position)
-            self.queue.remove(task)
+            task.assigned = True
             return task
         except:
             return None
 
     def get_closest_task(self, pos: Position) -> Task:
-        return min(self.queue, key=lambda task: distance(Position(*pos), Position(*task.start)))
-
-    def all_complete(self) -> bool:
-        return all(task.complete for task in self.tasks)
+        return min(self.unassigned, key=lambda task: distance(Position(*pos), Position(*task.start)))

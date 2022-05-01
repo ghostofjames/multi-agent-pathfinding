@@ -21,6 +21,7 @@ class CooperativeAStar():
         self.agents = []
 
     def reserve(self, position: Position, time: int) -> None:
+        print(position)
         self.reservations[(position, time)] = True
 
     def reserve_path(self, path: Path) -> None:

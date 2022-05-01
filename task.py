@@ -5,14 +5,18 @@ class Task():
     id: int
     start: Position
     end: Position
+    assigned: bool
+    picked_up: bool
     complete: bool
 
     def __init__(self, id: int, start: Position, end: Position) -> None:
         self.id = id
         self.start = start
         self.end = end
-        self.complete = False
+        self.assigned = False
         self.picked_up = False
+        self.complete = False
+        
 
     def __repr__(self) -> str:
         return f"Task({self.id=}, {self.start=}, {self.end=})"
