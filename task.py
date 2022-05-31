@@ -16,7 +16,6 @@ class Task():
         self.assigned = False
         self.picked_up = False
         self.complete = False
-        
 
     def __repr__(self) -> str:
         return f"Task({self.id=}, {self.start=}, {self.end=})"
@@ -24,5 +23,8 @@ class Task():
     def pick_up(self):
         self.picked_up = True
 
-    def put_down(self):
+    def deliver(self):
         self.complete = True
+
+    def to_json(self):
+        return {k: self.__dict__[k] for k in ('id', 'start', 'end')}

@@ -1,14 +1,14 @@
 from queue import PriorityQueue
-from cooperativeastar import CooperativeAStar, Node, Path
+
 import heuristics
+from agent import Agent
+from cooperativeastar import CooperativeAStar, Node, Path
 from world import Position, World
 
 
 class HierarchicalCooperativeAstar(CooperativeAStar):
-    def __init__(self, world: World):
-        self.world = world
-        self.reservations = {}
-        self.agents = []
+    def __init__(self, world: World, agents: list[Agent]):
+        super().__init__(world, agents)
 
     def astar(self, start: Position, goal: Position, t: int = 0) -> Path:
         open: PriorityQueue[tuple[int, Node]] = PriorityQueue()
@@ -17,7 +17,6 @@ class HierarchicalCooperativeAstar(CooperativeAStar):
         open.put((0, (start, t)))
 
         start_node: Node = (start, t)
-        current_node = start_node
 
         heuristic = self.ReverseResumableAstar(start, goal, self.world)
 
@@ -25,7 +24,7 @@ class HierarchicalCooperativeAstar(CooperativeAStar):
             current_node: Node = open.get()[1]
 
             if current_node[0] == goal:
-                break
+                return self.construct_path(closed, current_node, start_node)
 
             n_time = current_node[1] + 1
             for neighbour in self.world.neighbours(current_node[0]):
@@ -40,7 +39,7 @@ class HierarchicalCooperativeAstar(CooperativeAStar):
                     open.put((f, (neighbour, n_time)))
                     closed[(neighbour, n_time)] = (current_node, g)
 
-        return self.construct_path(closed, current_node, start_node)
+        raise Exception('Path not found')
 
     class ReverseResumableAstar():
         def __init__(self, initial: Position, goal: Position, w: World) -> None:
@@ -56,7 +55,7 @@ class HierarchicalCooperativeAstar(CooperativeAStar):
             self.resume(initial)
 
         def resume(self, N: Position):
-            while open:
+            while not self.open.empty():
                 p = self.open.get()[1]
                 self.closed[p[0]] = p[1]
 
@@ -65,13 +64,14 @@ class HierarchicalCooperativeAstar(CooperativeAStar):
 
                 for neighbour in reversed(list(self.w.neighbours(p[0]))):
                     g = p[1] + 1
-                    h = heuristics.manhattan_distance(neighbour, self.initial)
+                    # h = heuristics.manhattan_distance(neighbour, self.initial)
+                    h = heuristics.heuristic_fudge(neighbour, self.initial, self.goal)
                     if neighbour not in self.closed or g < self.closed[neighbour]:
                         self.open.put((h, (neighbour, g)))
 
             return False
 
-        def abstractDist(self, N):
+        def abstractDist(self, N: Position):
             if N in self.closed:
                 return self.closed[N]
             elif self.resume(N) == True:

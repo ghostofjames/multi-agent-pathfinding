@@ -1,27 +1,32 @@
 import json
 import time
 from itertools import combinations
-from pprint import pprint
+from random import shuffle
 
 from agent import Agent
 from cooperativeastar import CooperativeAStar, heuristics
 from hierarchicalcooperativeastar import HierarchicalCooperativeAstar
+from windowedhierarchicalcooperativeastar import WindowedHierarchicalCooperativeAStar
+from windowedcooperativeastar import WindowedCooperativeAStar
 from task import Task
 from taskmanager import TaskManager
 from world import Position, World
 
-from functools import wraps
 
+NUM_AGENTS = 24
+NUM_TASKS = 30
+# DEFAULT_CONFIG = 'configs/small-14x14.json'
+# DEFAULT_CONFIG = 'configs/medium-26x14.json'
+# DEFAULT_CONFIG = 'configs/large-38x20.json'
+# DEFAULT_CONFIG = 'configs/small-15x13-narrow.json'
+# DEFAULT_CONFIG = 'configs/medium-27x13-narrow.json'
+DEFAULT_CONFIG = 'configs/large-39x19-narrow.json'
 
-def timing(f):
-    @wraps(f)
-    def wrap(*args, **kw):
-        ts = time.time()
-        result = f(*args, **kw)
-        te = time.time()
-        print(f'func: {f.__name__} took: {te-ts} sec')
-        return result
-    return wrap
+DEFAULT_SPEED = 5
+
+DEFAULT_ALGORITHM = 'CA*'
+ALGORITHMS = {'CA*': CooperativeAStar, 'HCA*': HierarchicalCooperativeAstar,
+              'WHCA*': WindowedHierarchicalCooperativeAStar, 'WCA*': WindowedCooperativeAStar}
 
 
 class Simulation():
@@ -30,99 +35,106 @@ class Simulation():
     taskmanager: TaskManager
 
     time: int
-    speed: float
+    speed: int
     paused: bool
     complete: bool
 
-    def __init__(self, world='warehouse copy.json', tasks='task-list.json', speed=1):
+    def __init__(self, speed=DEFAULT_SPEED, config=DEFAULT_CONFIG, algorithm=DEFAULT_ALGORITHM, nagents=NUM_AGENTS, ntasks=NUM_TASKS, thread=True):
         self.speed = speed
         self.time = 0
-        self.paused = True
+        self.paused = thread
         self.complete = False
 
-        self.taskmanager = TaskManager()
+        self.algorithm = algorithm
+        self.config = config
 
-        with open('config.json') as f:
+        with open(config) as f:
             data = json.load(f)
 
-            size = data['size']
-            obstacles = [Position(*obstacle) for obstacle in data['obstacles']]
-            self.world = World(size, obstacles)
+            self.world = World((data['size'][0] - 1, data['size'][1] - 1),
+                               [Position(*obstacle) for obstacle in data['obstacles']])
 
             self.agents = [Agent(agent['id'], Position(*agent['position']))
-                           for agent in data['agents']]
-            # self.solver = CooperativeAStar(self.world, heuristic=heuristics.heuristic_fudge)
-            self.solver = HierarchicalCooperativeAstar(self.world)
+                           for agent in data['agents'][:nagents]]
+            # shuffle(self.agents)
 
-            for agent in self.agents:
-                self.solver.add_agent(agent)
+            self.solver = ALGORITHMS[algorithm](self.world, self.agents)
 
             tasks = [Task(task['id'], Position(*task['start']), Position(*task['end']))
-                     for task in data['tasks']]
-            self.taskmanager.add(tasks)
+                     for task in data['tasks'][:ntasks]]
+            self.taskmanager = TaskManager(tasks)
 
-        # self.agents = [Agent(0, Position(1, 1)),
-        #                Agent(1, Position(0, 0)),
-        #                Agent(2, Position(0, 2)),
-        #                Agent(3, Position(0, 1))]
+        self.costs = {agent.id: 0 for agent in self.agents}
+        self.processing_time = 0
 
-        # self.agents = [Agent(0, Position(0,  0)),
-        #                Agent(1, Position(10, 0)),
-        #                Agent(2, Position(0,  10)),
-        #                Agent(3, Position(10, 10))]
-
-        # self.agents = [Agent(0, Position(0,  0)),
-        #                Agent(1, Position(10, 0)),
-        #                Agent(2, Position(0,  10)),
-        #                Agent(3, Position(10, 10)),
-        #                Agent(4, Position(0,   2)),
-        #                Agent(5, Position(10,  2)),
-        #                Agent(6, Position(0,   8)),
-        #                Agent(7, Position(10, 8))]
-
-    @timing
     def step(self):
-        for agent in self.agents:
-            if agent.task == None:
-                agent.task = self.taskmanager.assign_task(agent)
-                print(f'{agent} has been assigned {agent.task}')
+        ts = time.time()
 
-            elif agent.goal_reached():
-                print(f'{agent} has reached goal {agent.goal}')
+        for agent in self.agents:
+            # Task completion
+            if agent.task and agent.goal_reached():
                 if agent.task.picked_up == False:
                     agent.task.pick_up()
-                    print(f'Agent has picked up item and is moving to destination.')
+                    # print(f'{agent} has reached goal {agent.goal} and picked up item')
                 else:
-                    agent.task.put_down()
-                    print(f'Agent has delivered item and {agent.task} is complete.')
+                    agent.task.deliver()
+                    # print(f'{agent} has reached goal {agent.goal} and delivered item. {agent.task} is complete.')
                     agent.task = None
 
-            elif agent.path == [] or (len(agent.path) == 1 and agent.path[0][1] == agent.position):
-                print(f'Finding path for {agent} to goal {agent.goal}')
+                agent.path = []
+
+                continue  # Picking up or delivering an item takes a time step
+
+            # Task assignment
+            elif agent.task == None:
+                agent.task = self.taskmanager.assign_task(agent)
+                # print(f'{agent} has been assigned {agent.task}')
+
+                if agent.task == None:
+                    self.solver.reserve(agent.position, self.time, agent.id)
+
+            # Path finding and movement
+            if agent.path:
+
+                agent.move()
+
+                self.costs[agent.id] += 1
+
+                if self.algorithm == 'WHCA*' and agent.path == []:
+                    print(f'Finding continued path for {agent}')
+                    path = self.solver.calculate_path(agent, self.time)
+                    agent.path = path
+
+            elif agent.path == []:
+                print(f'Finding path for {agent}')
                 path = self.solver.calculate_path(agent, self.time)
                 agent.path = path
 
-            else:
-                agent.move()
-
-        self.collision_test()
-
-        if self.taskmanager.all_complete:
-            print(f"all tasks have been complete, time taken was {self.time}")
-            self.complete = True
+        # self.collision_test()
 
         self.time += 1
 
+        te = time.time()
+
+        self.processing_time += te-ts
+
+        if self.taskmanager.all_complete:
+            self.complete = True
+            # print(f"all tasks have been complete, time taken was {self.time}")
+
+            print('-' * 20)
+            print(f'Map = {self.config}, Algorithm = {self.algorithm}, N.Agents = {len(self.agents)}')
+            print(f'Time = {self.time}')
+            print(f'Processing time = {self.processing_time}')
+            print(f'Makespan = {max(self.costs.values())}')
+            print(f'Sum of Costs = {sum(self.costs.values())}')
+            print('-' * 20)
+
     def run(self):
-        # run simulation until all agents reach goal
-        # while not all(agent.goal_reached() for agent in self.agents):
-        while True:
+        # run simulation until all tasks are complete
+        while not self.taskmanager.all_complete:
             time.sleep(1 / self.speed)
-            if self.paused:
-                continue
-            elif self.complete:
-                continue
-            else:
+            if not self.paused:
                 self.step()
 
     def collision_test(self):

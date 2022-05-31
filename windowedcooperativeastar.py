@@ -1,14 +1,14 @@
 from queue import PriorityQueue
-from agent import Agent
-import heuristics
-from hierarchicalcooperativeastar import HierarchicalCooperativeAstar, Node, Path
-from world import Position, World
 
+import heuristics
+from agent import Agent
+from cooperativeastar import CooperativeAStar, Node, Path
+from world import Position, World
 
 Node = tuple[Position, int]
 
 
-class WindowedHierarchicalCooperativeAStar(HierarchicalCooperativeAstar):
+class WindowedCooperativeAStar(CooperativeAStar):
     reservations: dict[tuple[Position, int], int | None]  # a space-time map
 
     def __init__(self, world: World, agents: list[Agent]):
@@ -21,8 +21,6 @@ class WindowedHierarchicalCooperativeAStar(HierarchicalCooperativeAstar):
 
         self.depth = 10
         self.max_depth = 14
-
-        self.heuristics = {}
 
     def reserved(self, position: Position, time: int, id: int) -> bool:
         # check to see if a position in the reservation table is reserved
@@ -42,7 +40,7 @@ class WindowedHierarchicalCooperativeAStar(HierarchicalCooperativeAstar):
             self.reserve(p[1], p[0] - 1, id)
         self.reserve(path[-1][1], path[-1][0] + 1, id)
 
-    def astar(self, start: Position, goal: Position, heuristic, t: int, id: int) -> Path:
+    def astar(self, start: Position, goal: Position, t: int, id: int) -> Path:
         # perform A* search
         open: PriorityQueue[tuple[int, tuple[Position, int, int]]] = PriorityQueue()
         closed: dict[Node, tuple[Node, int, int]] = {(start, t): ((start, t), 0, 0)}
@@ -70,7 +68,7 @@ class WindowedHierarchicalCooperativeAStar(HierarchicalCooperativeAstar):
                     continue
 
                 if (neighbour, n_time) not in closed or g < closed[(neighbour, n_time)][1]:
-                    f = g + heuristic.abstractDist(neighbour)
+                    f = g + heuristics.manhattan_distance(neighbour, goal)
                     open.put((f, (neighbour, n_time, n_depth)))
                     closed[(neighbour, n_time)] = ((c_pos, c_time), g, n_depth)
 
@@ -91,51 +89,7 @@ class WindowedHierarchicalCooperativeAStar(HierarchicalCooperativeAstar):
         if agent.goal is None:
             raise Exception('Cannot path find without goal')
 
-        # get RRA* instance for agent and goal
-        if (agent.id, agent.goal) not in self.heuristics:
-            self.heuristics[(agent.id, agent.goal)] = self.ReverseResumableAstar(
-                agent.position, agent.goal, self.world)
-
-        path = self.astar(agent.position, agent.goal,
-                          self.heuristics[(agent.id, agent.goal)], t, agent.id)
+        path = self.astar(agent.position, agent.goal, t, agent.id)
         self.reserve_path(path, agent.id)
         partial_path = path[:self.depth]
         return partial_path
-
-    class ReverseResumableAstar():
-        def __init__(self, initial: Position, goal: Position, w: World) -> None:
-            self.w = w
-            self.initial = initial
-            self.goal = goal
-
-            self.open: PriorityQueue[tuple[int, tuple[Position, int]]] = PriorityQueue()
-            self.closed: dict[Position, int] = {}
-
-            self.open.put((heuristics.manhattan_distance(initial, goal), (goal, 0)))
-
-            self.resume(initial)
-
-        def resume(self, N: Position):
-            while not self.open.empty():
-                p = self.open.get()[1]
-                self.closed[p[0]] = p[1]
-
-                if p[0] == N:
-                    if self.open.empty():
-                        self.open.put((0, p))
-                    return True
-
-                for neighbour in reversed(list(self.w.neighbours(p[0]))):
-                    g = p[1] + 1
-                    h = heuristics.manhattan_distance(neighbour, self.initial)
-                    if neighbour not in self.closed or g < self.closed[neighbour]:
-                        self.open.put((h, (neighbour, g)))
-
-            return False
-
-        def abstractDist(self, N: Position):
-            if N in self.closed:
-                return self.closed[N]
-            elif self.resume(N) == True:
-                return self.closed[N]
-            raise Exception('Not Found')

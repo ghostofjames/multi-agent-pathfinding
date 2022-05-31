@@ -2,12 +2,14 @@ import tkinter as tk
 from tkinter import ttk
 from threading import Thread
 
-from simulation import Simulation
+from simulation import Simulation, DEFAULT_ALGORITHM
 from world import Position
+
+DEFAULT_SPEED = 5
 
 
 class Application(tk.Frame):
-    UPDATE_FREQUENCY: int = 1
+    UPDATE_FREQUENCY: int = 60
     simulation: Simulation
 
     def __init__(self, root, *args, **kwargs):
@@ -33,18 +35,20 @@ class Application(tk.Frame):
         self.mainloop()
 
     def initalise_simulation(self):
-        self.simulation = Simulation(speed=2)
+        self.simulation = Simulation(speed=self.side.speedval.get(),
+                                     algorithm=self.side.selectedAlgorithm.get())
 
         self.canvas = Grid(self.main, self.simulation)
         self.canvas.grid(column=0, row=0, sticky='nsew')
 
-        self.side.task_list.update(self.simulation.agents)
+        self.side.task_list.update()
 
         self.thread = Thread(target=self.simulation.run, daemon=True)
         self.thread.start()
 
     def reset(self):
         print('Reset')
+        self.simulation.paused = True
         self.initalise_simulation()
         self.side.buttonStart.configure(state='enabled')
         self.side.buttonStep.configure(state='enabled')
@@ -67,7 +71,8 @@ class Application(tk.Frame):
 
     def mainloop(self):
         self.canvas.update()
-        self.side.time_variable.set(f'Time: {self.simulation.time}')
+        self.side.update()
+        self.side.task_list.update()
 
         self.after(self.UPDATE_FREQUENCY, self.mainloop)
 
@@ -92,14 +97,14 @@ class Side(ttk.Labelframe):
         self.buttonStop.grid(column=0, row=4)
 
         self.speedPicker = ttk.Frame(self)
-        self.speedPicker.grid(column=0, row=5)
+        self.speedPicker.grid(column=0, row=5, pady=5)
 
         ttk.Label(self.speedPicker, text='Speed').grid(column=0, row=0)
 
         def updatespeed(*_):
             self.parent.simulation.speed = self.speedval.get()
 
-        self.speedval = tk.IntVar(value=1)
+        self.speedval = tk.IntVar(value=DEFAULT_SPEED)
         self.speedval.trace('w', updatespeed)
 
         self.spinboxSpeed = ttk.Spinbox(self.speedPicker, from_=1,
@@ -108,15 +113,21 @@ class Side(ttk.Labelframe):
 
         ttk.Separator(self, orient='horizontal').grid(column=0, row=15, pady=5, sticky='nsew')
 
-        ttk.Label(self, text='Algorithms').grid(column=0, row=16)
+        ttk.Label(self, text='Path Finding Algorithm \n (requires reset)').grid(column=0, row=16)
 
-        self.selected = tk.StringVar()
-        r1 = ttk.Radiobutton(self, text='CA*', value='CA*', variable=self.selected)
+        self.selectedAlgorithm = tk.StringVar(value=DEFAULT_ALGORITHM)
+        r1 = ttk.Radiobutton(self, text='Algorithm CA*', value='CA*',
+                             variable=self.selectedAlgorithm)
         r1.grid(column=0, row=17, sticky='w')
-        r2 = ttk.Radiobutton(self, text='HCA*', value='HCA*', variable=self.selected)
+        r2 = ttk.Radiobutton(self, text='Algorithm HCA*', value='HCA*',
+                             variable=self.selectedAlgorithm)
         r2.grid(column=0, row=18, sticky='w')
-        r3 = ttk.Radiobutton(self, text='WHCA*', value='WHCA*', variable=self.selected)
+        r3 = ttk.Radiobutton(self, text='Algorithm WHCA*', value='WHCA*',
+                             variable=self.selectedAlgorithm)
         r3.grid(column=0, row=19, sticky='w')
+        r4 = ttk.Radiobutton(self, text='Algorithm WCA*', value='WCA*',
+                             variable=self.selectedAlgorithm)
+        r4.grid(column=0, row=20, sticky='w')
 
         ttk.Separator(self, orient='horizontal').grid(column=0, row=30, pady=5, sticky='nsew')
 
@@ -125,93 +136,117 @@ class Side(ttk.Labelframe):
         self.labelTime = ttk.Label(self, textvariable=self.time_variable)
         self.labelTime.grid(column=0, row=32, sticky='ew')
 
+        self.var_makespan = tk.StringVar()
+        self.var_makespan.set(f'Makespan = 0')
+        self.label_makespan = ttk.Label(self, textvariable=self.var_makespan)
+        self.label_makespan.grid(column=0, row=33, sticky='ew')
+
+        self.var_sumcosts = tk.StringVar()
+        self.var_sumcosts.set(f'Sum of Costs = 0')
+        self.label_sumcosts = ttk.Label(self, textvariable=self.var_sumcosts)
+        self.label_sumcosts.grid(column=0, row=34, sticky='ew')
+
         ttk.Separator(self, orient='horizontal').grid(column=0, row=40, pady=5, sticky='nsew')
 
-        self.task_list = TaskList(self, columns=('start', 'end'), selectmode='none')
-        self.task_list.grid(column=0, row=41, sticky='s')
-        self.rowconfigure(41, weight=1)
+        self.var_tasks = tk.StringVar()
+        self.var_tasks.set(f'Tasks remaining 0/0')
+        self.label_tasks = ttk.Label(self, textvariable=self.var_tasks)
+        self.label_tasks.grid(column=0, row=41, sticky='ew')
+
+        self.task_list = TaskList(self)
+        self.task_list.grid(column=0, row=42, sticky='s')
+        self.rowconfigure(42, weight=1)
+
+    def update(self) -> None:
+        self.time_variable.set(f'Time: {self.parent.simulation.time}')
+        self.var_makespan.set(f'Makespan = {max(self.parent.simulation.costs.values())}')
+        self.var_sumcosts.set(f'Sum of Costs = {sum(self.parent.simulation.costs.values())}')
+        self.var_tasks.set(
+            f'Tasks remaining {len(list(self.parent.simulation.taskmanager.incomplete))}/{len(self.parent.simulation.taskmanager.tasks)}')
 
 
 class TaskList(ttk.Treeview):
-    def __init__(self, parent, **kwargs):
-        super().__init__(parent, **kwargs)
+    def __init__(self, parent):
+        super().__init__(parent, columns=('task', 'goal'), selectmode='none')
         self.parent = parent
 
-        self.column('#0', width=50, stretch=False)
-        self.heading('#0', text='agent')
-        self.column('start', width=50, stretch=False)
-        self.heading('start', text='start')
-        self.column('end', width=50, stretch=False)
-        self.heading('end', text='end')
+        self.column('#0', width=40, stretch=False, anchor='center')
+        self.heading('#0', text='Agent')
+        self.column('task', width=40, stretch=False, anchor='center')
+        self.heading('task', text='Task')
+        self.column('goal', width=50, stretch=False, anchor='center')
+        self.heading('goal', text='Goal')
         self.bind('<Button-1>', lambda e: 'break')
         self.bind('<Motion>', lambda e: 'break')
 
-    def update(self, agents):
+    def update(self):
         self.delete(*self.get_children())
-        for agent in agents:
+        for agent in self.parent.parent.simulation.agents:
             self.insert('', 'end', text=str(agent.id), values=(
-                str(getattr(getattr(agent, 'task', None), 'start', None)),
-                str(getattr(getattr(agent, 'task', None), 'end', None))))
+                str(getattr(getattr(agent, 'task', None), 'id', None)),
+                str(getattr(agent, 'goal', None))))
 
 
 class Grid(tk.Canvas):
-    COLORS = ['red', 'green', 'blue', 'cyan', 'yellow', 'magenta',
-              'red', 'green', 'blue', 'cyan', 'yellow', 'magenta']
+    COLORS: list = ['red', 'green', 'blue', 'cyan', 'yellow', 'magenta']
     CELL_SIZE: int = 50
     MARGIN: int = 2
     AGENT_SIZE: int = 40
+    TEXT_SIZE: int = 8
     simulation: Simulation
 
     def __init__(self, parent, simulation: Simulation):
         self.simulation = simulation
 
-        super().__init__(parent,
-                         width=(self.simulation.world.size[0] + 1) * self.CELL_SIZE + self.MARGIN,
-                         height=(self.simulation.world.size[1] + 1) * self.CELL_SIZE + self.MARGIN)
+        # Calculate size of canvas based on world size
+        (size_x, size_y) = self.simulation.world.size
 
-        self.bind('<Button-1>', self.clicked)
+        if size_x > 30 or size_y > 30:
+            self.CELL_SIZE = 25
+            self.AGENT_SIZE = 20
+            self.TEXT_SIZE = 4
 
-        self.draw_grid()
+        grid_width = self.scale(size_x + 1)
+        grid_height = self.scale(size_y + 1)
 
-        self.draw_agents()
+        super().__init__(parent, width=grid_width, height=grid_height)
 
-    def draw_grid(self):
-        for i in range(self.simulation.world.size[0] + 1):
-            for j in range(self.simulation.world.size[1] + 1):
+        # Draw grid
+        for i in range(size_x + 1):
+            for j in range(size_y + 1):
                 self.create_rectangle(self.scale(i), self.scale(j),
                                       self.scale(i) + self.CELL_SIZE,
                                       self.scale(j) + self.CELL_SIZE,
                                       fill='' if self.simulation.world.passable(Position(i, j)) else 'black')
                 self.create_text((self.scale(i)+1, self.scale(j)),
-                                 text=f'({i}, {j})', anchor='nw',
-                                 font=('TkDefaultFont', 8),
+                                 text=f'({i}, {j})', anchor='nw', font=('TkDefaultFont', self.TEXT_SIZE),
                                  fill='black' if self.simulation.world.passable(Position(i, j)) else 'white')
 
-    def draw_agents(self):
+        # Draw agents, paths and goals
         for agent in self.simulation.agents:
-            x, y = agent.position[0], agent.position[1]
-
+            color = self.COLORS[agent.id % len(self.COLORS)]
+            # Agent goal
+            self.create_oval(0, 0, 0, 0, tags=['goal', f'goal-{agent.id}'])
+            self.create_text(0, 0, tags=['goal', f'goal-text-{agent.id}'], text=f'{agent.id}')
+            # Agent path
             self.create_line(0, 0, 0, 0,
-                             tags=f'line-{agent.id}',
-                             fill=self.COLORS[agent.id], width=5)
+                             tags=f'line-{agent.id}', fill=color, width=5)
+            # Agent position
+            (x, y) = agent.position
             self.create_oval(self.scale(x) + (self.CELL_SIZE - self.AGENT_SIZE),
                              self.scale(y) + (self.CELL_SIZE - self.AGENT_SIZE),
                              self.scale(x) + self.AGENT_SIZE,
                              self.scale(y) + self.AGENT_SIZE,
-                             tags=['agent', f'agent-{agent.id}'],
-                             fill=self.COLORS[agent.id])
+                             tags=['agent', f'agent-{agent.id}'], fill=color)
             self.create_text(self.scale(x) + (self.CELL_SIZE / 2),
                              self.scale(y) + (self.CELL_SIZE / 2),
-                             tags=['agent', f'agent-text-{agent.id}'],
-                             text=f'{agent.id}')
-
-        self.tag_raise('agent')
+                             tags=['agent', f'agent-text-{agent.id}'], text=f'{agent.id}')
 
     def update(self):
+        # Update position of agents, paths and goals
         for agent in self.simulation.agents:
-            x = agent.position[0]
-            y = agent.position[1]
-
+            # Update agent position
+            (x, y) = agent.position
             self.coords(f'agent-{agent.id}',
                         self.scale(x) + (self.CELL_SIZE - self.AGENT_SIZE),
                         self.scale(y) + (self.CELL_SIZE - self.AGENT_SIZE),
@@ -221,6 +256,7 @@ class Grid(tk.Canvas):
                         self.scale(x) + (self.CELL_SIZE / 2),
                         self.scale(y) + (self.CELL_SIZE / 2))
 
+            # Update path line
             if agent.path:
                 self.itemconfigure(f'line-{agent.id}', state='normal')
                 self.coords(f'line-{agent.id}',
@@ -228,18 +264,33 @@ class Grid(tk.Canvas):
                               for sublist in [agent.position] + [p[1] for p in agent.path]
                               for item in sublist])
             else:
+                # Hide if no current path
                 self.itemconfigure(f'line-{agent.id}', state='hidden')
 
-    def scale(self, n):
+            # Update goal position
+            if agent.goal:
+                self.itemconfigure(f'goal-{agent.id}', state='normal')
+                self.itemconfigure(f'goal-text-{agent.id}', state='normal')
+                (x, y) = agent.goal
+                self.coords(f'goal-{agent.id}',
+                            self.scale(x) + (self.CELL_SIZE - self.AGENT_SIZE),
+                            self.scale(y) + (self.CELL_SIZE - self.AGENT_SIZE),
+                            self.scale(x) + self.AGENT_SIZE,
+                            self.scale(y) + self.AGENT_SIZE)
+                self.coords(f'goal-text-{agent.id}',
+                            self.scale(x) + (self.CELL_SIZE / 2),
+                            self.scale(y) + (self.CELL_SIZE / 2))
+            else:
+                # Hide if no current goal
+                self.itemconfigure(f'goal-{agent.id}', state='hidden')
+                self.itemconfigure(f'goal-text-{agent.id}', state='normal')
+
+        self.tag_raise('goal')
+        self.tag_raise('agent')
+
+    def scale(self, n: int):
+        # Scale grid coordinates to canvas coordinates
         return (n * self.CELL_SIZE) + self.MARGIN
-
-    def descale(self, n):
-        return (n - self.MARGIN) // self.CELL_SIZE
-
-    def clicked(self, event):
-        x = self.descale(event.x)
-        y = self.descale(event.y)
-        print(f'clicked ({x},{y})')
 
 
 if __name__ == "__main__":

@@ -1,0 +1,10 @@
+{
+    "size": [10, 10],
+    "obstacles": [],
+    "agents": [
+        { "id": 0, "position": [0, 0] }
+    ],
+    "tasks": [
+        { "id": 0, "start": [0, 0], "end": [10, 10] }
+    ]
+}
