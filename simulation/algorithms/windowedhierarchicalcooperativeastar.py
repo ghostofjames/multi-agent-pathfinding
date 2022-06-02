@@ -1,9 +1,10 @@
 from queue import PriorityQueue
-from agent import Agent
-import heuristics
-from hierarchicalcooperativeastar import HierarchicalCooperativeAstar, Node, Path
-from world import Position, World
 
+from simulation.agent import Agent
+from simulation.world import Position, World
+
+from . import heuristics
+from .hierarchicalcooperativeastar import HierarchicalCooperativeAstar, Node,Path
 
 Node = tuple[Position, int]
 
@@ -86,7 +87,7 @@ class WindowedHierarchicalCooperativeAStar(HierarchicalCooperativeAstar):
         path.reverse()
         return path
 
-    def calculate_path(self, agent: Agent, t: int = 0):
+    def calculate_path(self, agent: Agent, t: int = 0) -> Path:
         # Calculate and return a path for the given agent, reserving the path
         if agent.goal is None:
             raise Exception('Cannot path find without goal')
@@ -115,7 +116,7 @@ class WindowedHierarchicalCooperativeAStar(HierarchicalCooperativeAstar):
 
             self.resume(initial)
 
-        def resume(self, N: Position):
+        def resume(self, N: Position) -> bool:
             while not self.open.empty():
                 p = self.open.get()[1]
                 self.closed[p[0]] = p[1]

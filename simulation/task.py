@@ -1,4 +1,4 @@
-from world import Position
+from simulation.world import Position
 
 
 class Task():
@@ -17,14 +17,14 @@ class Task():
         self.picked_up = False
         self.complete = False
 
-    def __repr__(self) -> str:
-        return f"Task({self.id=}, {self.start=}, {self.end=})"
-
-    def pick_up(self):
+    def pick_up(self) -> None:
         self.picked_up = True
 
-    def deliver(self):
+    def deliver(self) -> None:
         self.complete = True
+
+    def __repr__(self) -> str:
+        return f"Task({self.id=}, {self.start=}, {self.end=})"
 
     def to_json(self):
         return {k: self.__dict__[k] for k in ('id', 'start', 'end')}

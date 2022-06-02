@@ -1,11 +1,12 @@
 import tkinter as tk
-from tkinter import ttk
 from threading import Thread
+from tkinter import ttk
 
-from simulation import Simulation, DEFAULT_ALGORITHM
-from world import Position
+from simulation import Simulation
+from simulation.world import Position
 
 DEFAULT_SPEED = 5
+DEFAULT_ALGORITHM = 'CA*'
 
 
 class Application(tk.Frame):

@@ -1,13 +1,13 @@
 from queue import PriorityQueue
 
-import heuristics
-from agent import Agent
-from cooperativeastar import CooperativeAStar, Node, Path
-from world import Position, World
+from . import heuristics
+from simulation.agent import Agent
+from .cooperativeastar import CooperativeAStar, Node, Path
+from simulation.world import Position, World
 
 
 class HierarchicalCooperativeAstar(CooperativeAStar):
-    def __init__(self, world: World, agents: list[Agent]):
+    def __init__(self, world: World, agents: list[Agent]) -> None:
         super().__init__(world, agents)
 
     def astar(self, start: Position, goal: Position, t: int = 0) -> Path:
@@ -29,7 +29,7 @@ class HierarchicalCooperativeAstar(CooperativeAStar):
             n_time = current_node[1] + 1
             for neighbour in self.world.neighbours(current_node[0]):
 
-                if self.reserved(neighbour, n_time) or self.occupied(neighbour):
+                if self.reserved(neighbour, n_time):
                     continue
 
                 g = closed[current_node][1] + 1
@@ -54,7 +54,7 @@ class HierarchicalCooperativeAstar(CooperativeAStar):
 
             self.resume(initial)
 
-        def resume(self, N: Position):
+        def resume(self, N: Position) -> bool:
             while not self.open.empty():
                 p = self.open.get()[1]
                 self.closed[p[0]] = p[1]
@@ -64,8 +64,7 @@ class HierarchicalCooperativeAstar(CooperativeAStar):
 
                 for neighbour in reversed(list(self.w.neighbours(p[0]))):
                     g = p[1] + 1
-                    # h = heuristics.manhattan_distance(neighbour, self.initial)
-                    h = heuristics.heuristic_fudge(neighbour, self.initial, self.goal)
+                    h = heuristics.manhattan_distance(neighbour, self.initial)
                     if neighbour not in self.closed or g < self.closed[neighbour]:
                         self.open.put((h, (neighbour, g)))
 

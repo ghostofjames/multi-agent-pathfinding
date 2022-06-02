@@ -2,10 +2,10 @@
 
 import json
 import random
-from agent import Agent
-from task import Task
 
-from world import Position, World, distance
+from simulation.agent import Agent
+from simulation.task import Task
+from simulation.world import Position, World, distance
 
 with open('configs/large-39x19-narrow.json') as f:
     data = json.load(f)
@@ -33,8 +33,6 @@ while len(tasks) < ntasks:
     dist = distance(pos1, pos2)
 
     if dist > 2:
-        # print(pos1, pos2, dist)
-
         pickuppositions.remove(pos1)
         deliverpositions.remove(pos2)
 
@@ -56,6 +54,9 @@ while len(agents) < nagents:
     startpositions.remove(start)
     agents.append(Agent(id, start))
     id += 1
+
+
+# Export JSON
 
 json.dumps({"agents": [agent.to_json() for agent in agents],
             "tasks": [task.to_json() for task in tasks]})

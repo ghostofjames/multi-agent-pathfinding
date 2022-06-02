@@ -1,8 +1,9 @@
 from queue import PriorityQueue
 
-import heuristics
-from agent import Agent
-from world import Position, World
+from simulation.agent import Agent
+from simulation.world import Position, World
+
+from . import heuristics
 
 Node = tuple[Position, int]
 Path = list[tuple[int, Position]]
@@ -13,7 +14,7 @@ class CooperativeAStar():
     agents: list[Agent]
     reservations: dict[tuple[Position, int], bool]  # a space-time map
 
-    def __init__(self, world: World, agents: list[Agent]):
+    def __init__(self, world: World, agents: list[Agent]) -> None:
         self.world = world
         self.reservations = {}
         self.agents = agents
@@ -61,7 +62,7 @@ class CooperativeAStar():
 
                 if (neighbour, n_time) not in closed or g < closed[(neighbour, n_time)][1]:
                     f = g + heuristics.heuristic_fudge(neighbour, goal, start)
-                    open.put((f, (neighbour, n_time)))
+                    open.put((f, (neighbour, n_time)))  # type: ignore
                     closed[(neighbour, n_time)] = (current_node, g)
 
         raise Exception('Path not found')
@@ -76,7 +77,7 @@ class CooperativeAStar():
         path.reverse()
         return path
 
-    def calculate_path(self, agent: Agent, t: int = 0):
+    def calculate_path(self, agent: Agent, t: int = 0) -> Path:
         # Calculate and return a path for the given agent, reserving the path
         if agent.goal is None:
             raise Exception('Cannot path find without goal')

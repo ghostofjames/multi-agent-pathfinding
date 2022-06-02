@@ -1,3 +1,5 @@
+# Script for running simulaion tests
+
 from simulation import Simulation
 
 MAP = 'configs/small-15x13-narrow.json'

@@ -1,5 +1,8 @@
 from queue import PriorityQueue
-from world import World, Position
+
+from simulation.world import Position, World
+
+# standard A* implementation, unused
 
 
 def h(a, b):

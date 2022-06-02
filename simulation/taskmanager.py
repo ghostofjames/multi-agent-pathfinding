@@ -1,8 +1,8 @@
 from typing import Iterator
 
-from agent import Agent
-from task import Task
-from world import Position, distance
+from simulation.agent import Agent
+from simulation.task import Task
+from simulation.world import Position, distance
 
 
 class TaskManager():
@@ -12,15 +12,15 @@ class TaskManager():
         self.tasks = tasks
 
     @property
-    def incomplete(self) -> Iterator:
+    def incomplete(self) -> Iterator[Task]:
         return filter(lambda task: not task.complete, self.tasks)
 
     @property
-    def unassigned(self) -> Iterator:
+    def unassigned(self) -> Iterator[Task]:
         return filter(lambda task: not task.assigned, self.tasks)
 
     @property
-    def assigned(self) -> Iterator:
+    def assigned(self) -> Iterator[Task]:
         return filter(lambda task: task.assigned, self.tasks)
 
     @property

@@ -1,29 +1,23 @@
 import json
 import time
 from itertools import combinations
-from random import shuffle
 
-from agent import Agent
-from cooperativeastar import CooperativeAStar, heuristics
-from hierarchicalcooperativeastar import HierarchicalCooperativeAstar
-from windowedhierarchicalcooperativeastar import WindowedHierarchicalCooperativeAStar
-from windowedcooperativeastar import WindowedCooperativeAStar
-from task import Task
-from taskmanager import TaskManager
-from world import Position, World
+from simulation.agent import Agent
+from simulation.algorithms import CooperativeAStar, HierarchicalCooperativeAstar, WindowedCooperativeAStar, WindowedHierarchicalCooperativeAStar
+from simulation.task import Task
+from simulation.taskmanager import TaskManager
+from simulation.world import Position, World
 
-
-NUM_AGENTS = 24
+NUM_AGENTS = 8
 NUM_TASKS = 30
-# DEFAULT_CONFIG = 'configs/small-14x14.json'
+DEFAULT_CONFIG = 'configs/small-14x14.json'
 # DEFAULT_CONFIG = 'configs/medium-26x14.json'
 # DEFAULT_CONFIG = 'configs/large-38x20.json'
 # DEFAULT_CONFIG = 'configs/small-15x13-narrow.json'
 # DEFAULT_CONFIG = 'configs/medium-27x13-narrow.json'
-DEFAULT_CONFIG = 'configs/large-39x19-narrow.json'
+# DEFAULT_CONFIG = 'configs/large-39x19-narrow.json'
 
 DEFAULT_SPEED = 5
-
 DEFAULT_ALGORITHM = 'CA*'
 ALGORITHMS = {'CA*': CooperativeAStar, 'HCA*': HierarchicalCooperativeAstar,
               'WHCA*': WindowedHierarchicalCooperativeAStar, 'WCA*': WindowedCooperativeAStar}
@@ -67,7 +61,7 @@ class Simulation():
         self.costs = {agent.id: 0 for agent in self.agents}
         self.processing_time = 0
 
-    def step(self):
+    def step(self) -> None:
         ts = time.time()
 
         for agent in self.agents:
@@ -130,14 +124,14 @@ class Simulation():
             print(f'Sum of Costs = {sum(self.costs.values())}')
             print('-' * 20)
 
-    def run(self):
+    def run(self) -> None:
         # run simulation until all tasks are complete
         while not self.taskmanager.all_complete:
             time.sleep(1 / self.speed)
             if not self.paused:
                 self.step()
 
-    def collision_test(self):
+    def collision_test(self) -> None:
         for (a, b) in combinations(self.agents, 2):
             if a.position == b.position:
                 raise Exception(
